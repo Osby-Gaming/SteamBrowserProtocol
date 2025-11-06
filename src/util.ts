@@ -53,3 +53,7 @@ export function* chunks(arr: any[], n: number) {
     yield arr.slice(i, i + n);
   }
 }
+
+export function sortNumberArray(x: number, y: number) {
+    return x - y;
+}

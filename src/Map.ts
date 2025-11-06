@@ -1,10 +1,9 @@
-import invert from "invert-color";
 import CollisionManager from "./CollisionManager";
-import { DEFAULT_MAP_BACKGROUND_COLOR, DEFAULT_ZOOM_LEVEL, CELL_SIZE, ZOOM_LEVELS, MAX_ZOOM, DEFAULT_CELL_STYLES, MouseButtons, SVGPaths } from "./data";
+import { DEFAULT_MAP_BACKGROUND_COLOR, DEFAULT_ZOOM_LEVEL, CELL_SIZE, ZOOM_LEVELS, MAX_ZOOM, DEFAULT_CELL_STYLES, MouseButtons } from "./data";
 import EditMenu from "./EditMenu";
-import { Cell, CellStyleOverride, Collision, CopyMode, ExtendedTouch, KeyboardRunReason, LineDirection, MapLayout, MapLayoutInput, MapMode, MapRenderInstruction, MergingInstruction1D } from "./types";
-import { EventEmitter, FPSCounter, getHexFromCSSColor } from "./util";
-import { sortNumberArray, chunks } from "../util";
+import type { Cell, CellStyleOverride, Collision, ExtendedTouch, MapLayout, MapLayoutInput, MapMode, MapRenderInstruction } from "./types";
+import { KeyboardRunReason } from "./types";
+import { EventEmitter, FPSCounter, chunks } from "./util";
 import { MapLayoutHistory } from "./MapLayoutHistory";
 
 export default class Map extends EventEmitter<{ save: MapLayoutInput, select: number }> {
@@ -374,7 +373,11 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
             const touches = event.changedTouches;
 
             for (let i = 0; i < touches.length; i++) {
-                mapGetter().ongoingTouches.push(mapGetter().touchToExtendedTouch(touches[i]));
+                const touch = touches[i];
+
+                if (touch) {
+                    mapGetter().ongoingTouches.push(mapGetter().touchToExtendedTouch(touch));
+                }
             }
         }
     }
@@ -386,13 +389,17 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
             const touches = event.changedTouches;
 
             for (let i = 0; i < touches.length; i++) {
-                const idx = mapGetter().ongoingTouchIndexById(touches[i].identifier);
+                const touchInTouchList = touches[i];
 
-                if (idx >= 0) {
-                    const touch = mapGetter().ongoingTouches.splice(idx, 1)[0];
+                if (touchInTouchList) {
+                    const idx = mapGetter().ongoingTouchIndexById(touchInTouchList.identifier);
 
-                    if (!touch.hasMoved) {
-                        mapGetter().collisions.leftClick(touch.pageX, touch.pageY);
+                    if (idx >= 0) {
+                        const touch = mapGetter().ongoingTouches.splice(idx, 1)[0];
+
+                        if (touch && !touch.hasMoved) {
+                            mapGetter().collisions.leftClick(touch.pageX, touch.pageY);
+                        }
                     }
                 }
             }
@@ -409,27 +416,63 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
             const mapContext = mapGetter();
 
             if (touches.length !== 2) {
-                const idx = mapContext.ongoingTouchIndexById(touches[0].identifier);
+                const touchInList = touches[0];
 
-                if (idx >= 0) {
-                    const touch = mapContext.ongoingTouches[idx];
-                    const dx = touches[0].pageX - touch.pageX;
-                    const dy = touches[0].pageY - touch.pageY;
+                if (touchInList) {
+                    const idx = mapContext.ongoingTouchIndexById(touchInList.identifier);
 
-                    mapContext.camera.x -= dx / mapContext.camera.zoom;
-                    mapContext.camera.y -= dy / mapContext.camera.zoom;
+                    if (idx >= 0) {
+                        const touch = mapContext.ongoingTouches[idx];
+                        if (touch) {
+                            const dx = touchInList.pageX - touch.pageX;
+                            const dy = touchInList.pageY - touch.pageY;
 
-                    mapContext.ongoingTouches.splice(idx, 1, { identifier: touches[0].identifier, hasMoved: true, pageX: touches[0].pageX, pageY: touches[0].pageY });
+                            mapContext.camera.x -= dx / mapContext.camera.zoom;
+                            mapContext.camera.y -= dy / mapContext.camera.zoom;
+
+                            mapContext.ongoingTouches.splice(idx, 1, { identifier: touchInList.identifier, hasMoved: true, pageX: touchInList.pageX, pageY: touchInList.pageY });
+                        } else {
+                            console.error("Touch not found in ongoing touches list.");
+                        }
+                    }
                 }
             }
 
             if (touches.length === 2) {
-                const idx1 = mapContext.ongoingTouchIndexById(touches[0].identifier);
-                const idx2 = mapContext.ongoingTouchIndexById(touches[1].identifier);
+                const touch1n = touches[0];
+                const touch2n = touches[1];
+
+                if (!touch1n) {
+                    console.error("Touch1n not found in ongoing touches list.");
+
+                    return;
+                }
+
+                if (!touch2n) {
+                    console.error("Touch2n not found in ongoing touches list.");
+
+                    return;
+                }
+
+
+                const idx1 = mapContext.ongoingTouchIndexById(touch1n.identifier);
+                const idx2 = mapContext.ongoingTouchIndexById(touch2n.identifier);
 
                 if (idx1 >= 0 && idx2 >= 0) {
                     const touch1 = mapContext.ongoingTouches[idx1];
                     const touch2 = mapContext.ongoingTouches[idx2];
+
+                    if (!touch1) {
+                        console.error("Touch1 not found in ongoing touches list.");
+
+                        return;
+                    }
+
+                    if (!touch2) {
+                        console.error("Touch2 not found in ongoing touches list.");
+
+                        return;
+                    }
 
                     const pox1 = touch1.pageX;
                     const poy1 = touch1.pageY;
@@ -437,9 +480,6 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
                     const poy2 = touch2.pageY;
 
                     const distanceBefore = Math.sqrt(Math.pow(pox2 - pox1, 2) + Math.pow(poy2 - poy1, 2));
-
-                    const touch1n = touches[0];
-                    const touch2n = touches[1];
 
                     const pnx1 = touch1n.pageX;
                     const pny1 = touch1n.pageY;
@@ -455,9 +495,9 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
                     const zoomThrottle = zoomThrottleConstant / mapContext.camera.zoom;
 
                     if (distanceBefore > distanceAfter) {
-                        this.zoomToLevel(this.camera.zoom-(distanceBefore / zoomThrottle - distanceAfter / zoomThrottle), middleBetweenTouchesX, middleBetweenTouchesY)
+                        this.zoomToLevel(this.camera.zoom - (distanceBefore / zoomThrottle - distanceAfter / zoomThrottle), middleBetweenTouchesX, middleBetweenTouchesY)
                     } else {
-                        this.zoomToLevel(this.camera.zoom+(distanceAfter / zoomThrottle - distanceBefore / zoomThrottle), middleBetweenTouchesX, middleBetweenTouchesY)
+                        this.zoomToLevel(this.camera.zoom + (distanceAfter / zoomThrottle - distanceBefore / zoomThrottle), middleBetweenTouchesX, middleBetweenTouchesY)
                     }
 
                     const hasFirstMoved = touch1.pageX !== touch1n.pageX || touch1.pageY !== touch1n.pageY;
@@ -607,8 +647,15 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
                     continue;
                 }
 
+                const cell = this.history.mapLayout.cells[cellIndex];
+
+                if (cell === undefined) {
+                    console.error("Cannot cut cell with undefined cell.");
+                    continue;
+                }
+
                 indexes.push(cellIndex);
-                from.push(this.history.mapLayout.cells[cellIndex]);
+                from.push(cell);
                 to.push(null);
             }
         }
@@ -660,7 +707,13 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
 
         for (let y = startingPoint[1]; y < endY; y++) {
             const row = rows[y - startingPoint[1]];
-            
+
+            if (row === undefined) {
+                console.error("Cannot paste cells because row is undefined.");
+
+                return;
+            }
+
             for (let x = startingPoint[0]; x < endX; x++) {
                 const cellData = row[x - startingPoint[0]];
                 const cellIndex = this.coordinatesToCellIndex(x, y);
@@ -669,8 +722,16 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
                     continue;
                 }
 
+                const cell = this.history.mapLayout.cells[cellIndex];
+
+                if (cell === undefined) {
+                    console.error("Cannot paste cell with undefined cell.");
+
+                    continue;
+                }
+
                 indices.push(cellIndex);
-                from.push(this.history.mapLayout.cells[cellIndex]);
+                from.push(cell);
                 to.push(cellData);
             }
         }
@@ -681,11 +742,11 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
 
         return true;
     }
-    
+
     zoomToLevel(level: number, mouseX?: number, mouseY?: number) {
         const currentZoom = this.camera.zoom;
         let zoomTo = level;
-        
+
         if (zoomTo < this.minZoom) {
             zoomTo = this.minZoom;
         }
@@ -717,7 +778,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         // const moveYBy = heightDiff / 2;
 
         // this.camera.y -= moveYBy;
-        
+
 
         if (mouseX !== undefined && mouseY !== undefined) {
             // keep mouse location in the same place
@@ -755,7 +816,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
 
         const firstCellIndex = selection.sort((a, b) => a - b)[0];
 
-        return firstCellIndex;
+        return firstCellIndex ?? null;
     }
 
     getCoordinatesOfCell(cellIndex: number): [number, number] | [null, null] {
@@ -826,7 +887,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         return [minX, maxX, minY, maxY];
     }
 
-    getCellBounds() {
+    getCellBounds(): [number, number, number, number] {
         const cellRows = [...chunks(this.history.mapLayout.cells, this.history.mapLayout.x)];
 
         let minX = this.history.mapLayout.x;
@@ -882,7 +943,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
     cameraPositionToCanvas(zoomLevel: number) {
         return [this.camera.x * zoomLevel, this.camera.y * zoomLevel];
     }
-    
+
     canvasPositionToCamera(x: number, y: number, zoomLevel: number) {
         return [x / zoomLevel, y / zoomLevel];
     }
@@ -916,8 +977,8 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
 
         if (this.camera.zoom < this.minZoom) {
             this.camera.zoom = this.minZoom;
-        } if (this.camera.zoom > ZOOM_LEVELS[ZOOM_LEVELS.length - 1]) {
-            this.camera.zoom = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+        } if (this.camera.zoom > MAX_ZOOM) {
+            this.camera.zoom = MAX_ZOOM;
         }
 
         this.render(force);
@@ -926,7 +987,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
     render(force = false) {
         const { mapLayout } = this.history;
         const collisions: Collision<number>[] = [];
-        const layers: MapRenderInstruction[][] = [
+        const layers: [MapRenderInstruction[], MapRenderInstruction[], MapRenderInstruction[], MapRenderInstruction[]] = [
             [], // Cell layer
             [], // Border layer
             [],  // Text layer
@@ -1391,7 +1452,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
                         this.ctx.fillStyle = instruction.color;
                         this.ctx.fillText(instruction.text, instruction.x, instruction.y);
                     }
-                    
+
                     if (instruction.type === "textstroke") {
                         this.ctx.font = instruction.font;
                         this.ctx.strokeStyle = instruction.color;
@@ -1669,7 +1730,15 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
 
     ongoingTouchIndexById(idToFind: number) {
         for (let i = 0; i < this.ongoingTouches.length; i++) {
-            const id = this.ongoingTouches[i].identifier;
+            const touch = this.ongoingTouches[i];
+
+            if (!touch) {
+                console.error("Touch not found in ongoing touches list.");
+                
+                continue;
+            }
+
+            const id = touch.identifier;
 
             if (id === idToFind) {
                 return i;

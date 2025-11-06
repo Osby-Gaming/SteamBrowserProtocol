@@ -2,13 +2,36 @@
   "name": "platskarta",
   "module": "src/index.ts",
   "type": "module",
+  "version": "0.1.0",
+  "exports": {
+    "types": "./dist/ts/Map.d.ts", 
+    "import": "./dist/esm/Map.js",
+    "require": "./dist/cjs/Map.cjs"
+  },
+  "scripts": {
+    "build": "concurrently \"bun run build-browser\" \"bun run build-node\" \"bun run build-bun\" \"bun run build:declaration\"",
+    "build-browser": "bun build ./src/Map.ts --outdir ./dist/browser --target browser",
+    "build-node": "bun build ./src/Map.ts --outdir ./dist/cjs --target node --format cjs",
+    "build-bun": "bun build ./src/Map.ts --outdir ./dist/esm --target bun",
+    "dev": "concurrently \"bun run dev-browser\" \"bun run dev-node\" \"bun run dev-bun\" \"bun run dev:declaration\"",
+    "dev-browser": "bun build ./src/Map.ts --outdir ./dist/browser --target browser --watch",
+    "dev-node": "bun build ./src/Map.ts --outdir ./dist/cjs --target node --format cjs --watch",
+    "dev-bun": "bun build ./src/Map.ts --outdir ./dist/esm --target bun --watch",
+    "build:declaration": "tsc ./src/Map.ts --emitDeclarationOnly --declaration --outFile ./dist/ts/Map.js",
+    "dev:declaration": "tsc ./src/Map.ts --emitDeclarationOnly --declaration --outFile ./dist/ts/Map.js --watch",
+    "demo": "concurrently \"bun run dev-browser\" \"bun ./demo/server.ts\""
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/express": "^5.0.5",
+    "concurrently": "^9.2.1"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
+    "express": "^5.1.0",
+    "invert-color": "^2.0.0",
     "rgb-hex": "^4.1.0"
   }
 }

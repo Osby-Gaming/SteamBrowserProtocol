@@ -1,9 +1,8 @@
-import { text } from "stream/consumers";
 import type { CellStyleOverride, CellType, PossibleZoomLevels } from "./types";
 
 export const CELL_SIZE = 25; // Size of each cell in pixels
 export const ZOOM_LEVELS = [0.8, 1, 1.2, 1.5, 2, 3, 4, 6, 7]; // Predefined zoom levels
-export const MAX_ZOOM = ZOOM_LEVELS[ZOOM_LEVELS.length - 1]; // Maximum zoom level
+export const MAX_ZOOM = ZOOM_LEVELS[ZOOM_LEVELS.length - 1] as number; // Maximum zoom level
 
 export const DEFAULT_MAP_BACKGROUND_COLOR = "#000";
 export const DEFAULT_ZOOM_LEVEL: PossibleZoomLevels = 1;
