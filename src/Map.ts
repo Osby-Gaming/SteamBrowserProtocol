@@ -326,7 +326,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         this.centerCamera();
     }
 
-    switchLayout(mapLayout: MapLayoutInput) {
+    public switchLayout(mapLayout: MapLayoutInput) {
         this.history = new MapLayoutHistory(Map.inputProcessing(mapLayout));
         this.mapWidth = mapLayout.x * CELL_SIZE;
         this.mapHeight = mapLayout.y * CELL_SIZE;
@@ -743,7 +743,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         return true;
     }
 
-    zoomToLevel(level: number, mouseX?: number, mouseY?: number) {
+    public zoomToLevel(level: number, mouseX?: number, mouseY?: number) {
         const currentZoom = this.camera.zoom;
         let zoomTo = level;
 
@@ -929,7 +929,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         return [minX * CELL_SIZE, (maxX * CELL_SIZE + CELL_SIZE), minY * CELL_SIZE, ((maxY * CELL_SIZE) + CELL_SIZE)];
     }
 
-    centerCamera() {
+    public centerCamera() {
         this.keepCameraConstraintsAndRender();
 
         let [minX, maxX, minY, maxY] = this.getCellBounds();
@@ -1641,7 +1641,7 @@ export default class Map extends EventEmitter<{ save: MapLayoutInput, select: nu
         this.render();
     }
 
-    exportMapLayout(): MapLayoutInput {
+    public exportMapLayout(): MapLayoutInput {
         const { mapLayout } = this.history;
         const cells: (Cell | `${number}`)[] = [];
 
