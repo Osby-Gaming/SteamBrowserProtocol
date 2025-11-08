@@ -2,7 +2,7 @@
   "name": "platskarta",
   "module": "src/index.ts",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "exports": {
     "types": "./dist/ts/Map.d.ts", 
     "import": "./dist/esm/Map.js",

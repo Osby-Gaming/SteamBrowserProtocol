@@ -1,4 +1,4 @@
-import Map from "/Map.js";
+import Map from "https://cdn.jsdelivr.net/npm/platskarta/dist/browser/Map.js";
 
 const isEditing = window.location.pathname.includes("edit");
 

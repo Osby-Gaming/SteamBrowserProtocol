@@ -19,7 +19,7 @@ yarn add platskarta
 
 ### Browser 
 ```ts
-import { Map } from "/platskarta.js";
+import Map from "https://cdn.jsdelivr.net/npm/platskarta/dist/browser/Map.js";
 ```
 
 ## Användning
