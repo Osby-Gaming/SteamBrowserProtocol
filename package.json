@@ -2,7 +2,7 @@
   "name": "steambrowserprotocol",
   "module": "src/SteamBrowserProtocol.ts",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "exports": {
     "types": "./dist/ts/SteamBrowserProtocol.d.ts",
     "import": "./dist/esm/SteamBrowserProtocol.js",
@@ -23,9 +23,6 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.9.3"
   },
   "dependencies": {
     "open": "^11.0.0"
